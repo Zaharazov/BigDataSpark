@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:14
+    container_name: my_postgres2
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d
+      - ./mock_data:/mock_data
+
+  spark:
+    image: jupyter/pyspark-notebook:latest
+    container_name: spark_notebook
+    ports:
+      - "8888:8888"
+      - "4040:4040"
+    environment:
+      - PYSPARK_PYTHON=python3
+      - PYSPARK_DRIVER_PYTHON=jupyter
+      - PYSPARK_DRIVER_PYTHON_OPTS=notebook --NotebookApp.token='' --NotebookApp.password=''
+      - PYSPARK_SUBMIT_ARGS=--packages org.postgresql:postgresql:42.2.27,com.clickhouse:clickhouse-jdbc:0.4.6,org.mongodb.spark:mongo-spark-connector_2.12:10.1.1 pyspark-shell
+    volumes:
+      - ./notebooks:/home/jovyan/work
+    depends_on:
+      - postgres
+      - clickhouse
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: clickhouse
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - ./clickhouse_data:/var/lib/clickhouse  
+      - /home/jack/clickhouse_data:/var/lib/clickhouse     
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    environment:
+      - CLICKHOUSE_USER=clickhouse
+      - CLICKHOUSE_PASSWORD=pass
+      - CLICKHOUSE_DB=clickhouse
+
+volumes:
+  pgdata:
+  clickhouse_data:     
